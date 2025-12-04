@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVER_IP = "172.31.1.40"
+        SSH_KEY_ID = "devops-key"
+        WEBROOT = "/var/www/html"
+        GIT_URL = "https://github.com/Maheshshelke05/static-website-project.git"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: "${GIT_URL}"
+            }
+        }
+
+        stage('Deploy to EC2 Server') {
+            steps {
+                sshagent([SSH_KEY_ID]) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} '
+                            sudo systemctl stop nginx;
+                            sudo rm -rf ${WEBROOT}/*;
+                            sudo git clone ${GIT_URL} ${WEBROOT};
+                            sudo systemctl start nginx;
+                        '
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "🚀 Deployment SUCCESS!!! Website Updated ✔"
+        }
+        failure {
+            echo "❌ Deployment FAILED, Check Jenkins logs!"
+        }
+    }
+}
